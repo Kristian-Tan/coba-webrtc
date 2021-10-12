@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Realtime communication with WebRTC</title>
+</head>
+<body>
+  <h1>Realtime communication with WebRTC</h1>
+  <h2 id="labelCurrentStage"></h2>
+  <div id="videos">
+    <video id="remoteVideo" autoplay muted playsinline></video>
+  </div>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script type="text/javascript">
+var remoteVideo = document.querySelector('#remoteVideo');
+var remoteStream;
+var pc;
+
+/*
+buttonOffer.onclick = function() {
+  var message = inputOffer.value;
+  message = JSON.parse(message);
+  pc.setRemoteDescription(new RTCSessionDescription(message));
+  pc.createAnswer().then(
+    function(sessionDescription) {
+      pc.setLocalDescription(sessionDescription);
+      console.log('setLocalAndSendMessage sending message', sessionDescription);
+      //inputAnswer.value = JSON.stringify(sessionDescription);
+      containerAnswer.innerHTML = containerAnswer.innerHTML + `<input type="text" value='`+JSON.stringify(sessionDescription)+`'><br>`;
+    },
+    function (error) {
+      trace('Failed to create session description: ' + error.toString());
+    }
+  );
+}
+
+buttonCandidate.onclick = function() {
+  var message = inputCandidate.value;
+  message = JSON.parse(message);
+  var candidate = new RTCIceCandidate({
+    sdpMLineIndex: message.sdpMLineIndex,
+    candidate: message.candidate
+  });
+  console.log(candidate);
+  pc.addIceCandidate(candidate);
+}
+*/
+
+
+//buttonStart.onclick = function() {
+  try {
+    pc = new RTCPeerConnection(null);
+    // to use STUN/TURN server instead:
+    //pc = new RTCPeerConnection({iceServers: [ {url:'stun:stun.l.google.com:19302'}, {url:'turn:192.158.29.39:3478?transport=udp'} ]});
+    pc.onicecandidate = function(event) {
+      console.log('icecandidate event, THIS SHOULD NOT HAPPEN ON RECEIVER!: ', event);
+    };
+    pc.onaddstream = function(event) {
+      console.log('Remote stream added.');
+      remoteStream = event.stream;
+      remoteVideo.srcObject = remoteStream;
+      window.remoteStream = remoteStream;
+    };
+    pc.onremovestream = function(event) {
+      console.log('Remote stream removed. Event: ', event);
+    };
+    console.log('Created RTCPeerConnnection');
+  } catch (e) {
+    console.log('Failed to create PeerConnection, exception: ' + e.message);
+    console.log(e);
+    alert('Cannot create RTCPeerConnection object.');
+  }
+//}
+
+function sendMessage(type, msg) {
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('POST','write-to-file.php?file='+type+'.exchange.txt');
+  xhrobj.setRequestHeader("Content-type", "application/json");
+  xhrobj.send(btoa(JSON.stringify(msg)));
+}
+
+
+loopCandidateStop = false;
+loopCandidatesStop = false;
+loopOfferStop = false;
+function receiveMessage(type) {
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('GET','read-last-first.php?file='+type+'.exchange.txt');
+  xhrobj.onreadystatechange = function() { if (this.readyState == 4 && this.status == 200) {
+    // xhrobj.responseText;
+    var lines = xhrobj.responseText.split("\n");
+    for (var i = 0; i <= lines.length; i++) {
+      var line = lines[i];
+      if(line == "" || typeof line == "undefined" || line == undefined) continue;
+      console.log(line);
+      var obj = JSON.parse(atob(line));
+
+      if(obj.type == "candidate" && loopCandidateStop == false) {
+
+        var candidate = new RTCIceCandidate({
+          sdpMLineIndex: obj.sdpMLineIndex,
+          candidate: obj.candidate
+        });
+        console.log(candidate);
+        pc.addIceCandidate(candidate);
+        loopCandidateStop = true;
+        document.querySelector("#labelCurrentStage").innerHTML = "4. finished reading candidates";
+        return;
+
+      }
+
+      if(obj.type == "candidates" && loopCandidatesStop == false) {
+
+        console.log(obj.items.length);
+        for (var ii = 0; ii < obj.items.length; ii++) {
+          candidate = obj.items[ii];
+          var candidateRTC = new RTCIceCandidate({
+            sdpMLineIndex: candidate.sdpMLineIndex,
+            candidate: candidate.candidate
+          });
+          //console.log(candidateRTC);
+          pc.addIceCandidate(candidateRTC);
+        }
+        loopCandidatesStop = true;
+        document.querySelector("#labelCurrentStage").innerHTML = "4. finished reading candidates";
+        return;
+
+      }
+
+      if(obj.type == "offer" && loopOfferStop == false) {
+
+        pc.setRemoteDescription(new RTCSessionDescription(obj));
+        pc.createAnswer().then(
+          function(sessionDescription) {
+            pc.setLocalDescription(sessionDescription);
+            console.log('setLocalAndSendMessage sending message', sessionDescription);
+            //inputAnswer.value = JSON.stringify(sessionDescription);
+            //containerAnswer.innerHTML = containerAnswer.innerHTML + `<input type="text" value='`+JSON.stringify(sessionDescription)+`'><br>`;
+            document.querySelector("#labelCurrentStage").innerHTML = "2. sending answer";
+            sendMessage("answer", sessionDescription);
+            //return;
+            console.log("START RECEIVING CANDIDATES");
+            loopOfferStop = true;
+            document.querySelector("#labelCurrentStage").innerHTML = "3. waiting for candidates";
+            receiveMessage("candidates");
+          },
+          function (error) {
+            trace('Failed to create session description: ' + error.toString());
+          }
+        );
+
+      }
+
+    }
+  }}
+  xhrobj.send();
+  setTimeout(function(){ receiveMessage(type); }, 4000);
+}
+document.querySelector("#labelCurrentStage").innerHTML = "1. waiting for offer";
+receiveMessage("offer");
+//receiveMessage("candidate");
+
+  </script>
+
+</body>
+
+</html>
