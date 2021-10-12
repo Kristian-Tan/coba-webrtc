@@ -9,15 +9,11 @@
     <video id="localVideo" autoplay muted playsinline></video>
   </div>
   1) send the offer to receiver
-  <!-- <input type="text" id="inputOffer"><br> -->
   <div id="containerOffer"></div>
   2) receive the answer from receiver
   <input type="text" id="inputAnswer"><button id="buttonAnswer">Answer</button><br>
   3) send the candidate to receiver (usually first/top candidate works better)
-  <!-- <input type="text" id="inputCandidate"><br> -->
   <div id="containerCandidate"></div>
-  TODO: ADD TURN/STUN SERVER
-  <!-- This file is automatically added/served when running "node index.js". -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <script type="text/javascript">
 var localVideo = document.querySelector('#localVideo');
@@ -30,8 +26,9 @@ var containerOffer = document.querySelector('#containerOffer');
 var localStream;
 var pc;
 
-navigator.mediaDevices.getUserMedia({
-  audio: false,
+navigator.mediaDevices.getUserMedia({ // share user's camera/video
+//navigator.mediaDevices.getDisplayMedia({ // screen sharing
+  audio: true,
   video: true
 })
 .then(function(stream) {
@@ -50,6 +47,9 @@ navigator.mediaDevices.getUserMedia({
 function startSendingVideo() {
   try {
     pc = new RTCPeerConnection(null);
+    // to use STUN/TURN server instead:
+    //pc = new RTCPeerConnection({iceServers: [ {url:'stun:stun.l.google.com:19302'}, {url:'turn:192.158.29.39:3478?transport=udp'} ]});
+
     pc.onicecandidate = function(event) {
       //console.log('icecandidate event: ', event);
       if (event.candidate) {

@@ -11,13 +11,9 @@
   1) receive the offer from sender
   <input type="text" id="inputOffer"><button id="buttonOffer">Offer</button><br>
   2) send the answer to sender
-  <!-- <input type="text" id="inputAnswer"><br> -->
   <div id="containerAnswer"></div>
   3) receive the candidate from sender
   <input type="text" id="inputCandidate"><button id="buttonCandidate">Candidate</button><br>
-
-  <!--<button id="buttonStart">START</button>-->
-  <!-- This file is automatically added/served when running "node index.js". -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <script type="text/javascript">
 var remoteVideo = document.querySelector('#remoteVideo');
@@ -64,6 +60,8 @@ buttonCandidate.onclick = function() {
 //buttonStart.onclick = function() {
   try {
     pc = new RTCPeerConnection(null);
+    // to use STUN/TURN server instead:
+    //pc = new RTCPeerConnection({iceServers: [ {url:'stun:stun.l.google.com:19302'}, {url:'turn:192.158.29.39:3478?transport=udp'} ]});
     pc.onicecandidate = function(event) {
       console.log('icecandidate event, THIS SHOULD NOT HAPPEN ON RECEIVER!: ', event);
     };
